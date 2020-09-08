@@ -20,7 +20,7 @@ metadata {
         capability "Sensor"
         capability "Configuration"
 
-        fingerprint profileId: "0104", deviceId:"0053", inClusters: "0000, 0003, 0004, 0B04, 0702", outClusters: "0019", manufacturer: "", model: "E240-KR080Z0-HA", deviceJoinName: "Smart Sub-meter(CT Type)"
+        fingerprint profileId: "0104", deviceId:"0053", inClusters: "0000, 0003, 0004, 0B04, 0702", outClusters: "0019", manufacturer: "", model: "E240-KR080Z0-HA", deviceJoinName: "Energy Monitor" //Smart Sub-meter(CT Type)
         
     }
 
@@ -52,8 +52,15 @@ def parse(String description) {
     if (event) {
         log.info event
         if (event.name == "power") {
-            event.value = event.value/1000
-            event.unit = "W"
+            def descMap = zigbee.parseDescriptionAsMap(description)
+            log.debug "event : Desc Map: $descMap"
+            if (descMap.clusterInt == 0x0B04 && descMap.attrInt == 0x050b) {
+                event.value = event.value/10
+                event.unit = "W"
+            } else {
+                event.value = event.value/1000
+                event.unit = "W"
+            }
         } else if (event.name == "energy") {
             event.value = event.value/1000000
             event.unit = "kWh"
@@ -75,6 +82,12 @@ def parse(String description) {
                         log.debug "meter"
                         map.name = "power"
                         map.value = zigbee.convertHexToInt(it.value)/1000
+                        map.unit = "W"
+                }
+                if (it.clusterInt == 0x0B04 && it.attrInt == 0x050b) {
+                        log.debug "meter"
+                        map.name = "power"
+                        map.value = zigbee.convertHexToInt(it.value)/10
                         map.unit = "W"
                 }
                 if (it.clusterInt == 0x0702 && it.attrInt == 0x0000) {
